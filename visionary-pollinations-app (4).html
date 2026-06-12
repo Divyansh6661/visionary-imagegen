@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visionary — AI Image Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0d0d; --surface: #161616; --surface2: #1e1e1e;
+      --border: rgba(255,255,255,0.08); --border-hover: rgba(255,255,255,0.15);
+      --text: #f0ede8; --text-muted: #888580; --text-dim: #444;
+      --accent: #c8f55a; --accent-dim: rgba(200,245,90,0.12); --accent-dark: #9ec23a;
+      --danger: #ff5f5f; --font-display: 'Space Grotesk', sans-serif;
+      --font-mono: 'Space Mono', monospace; --radius: 12px; --radius-sm: 8px;
+    }
+    body { font-family: var(--font-display); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    header { border-bottom: 1px solid var(--border); padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; }
+    .logo span { color: var(--accent); }
+    .badge { font-family: var(--font-mono); font-size: 0.7rem; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(200,245,90,0.2); padding: 3px 10px; border-radius: 100px; }
+
+    /* AUTH SCREEN */
+    .auth-screen { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 3rem 2.5rem; max-width: 420px; width: 100%; text-align: center; }
+    .auth-icon { font-size: 2.5rem; margin-bottom: 1.5rem; }
+    .auth-card h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.75rem; }
+    .auth-card p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 2rem; }
+    .auth-btn { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: #0d0d0d; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; padding: 0.85rem 2rem; border-radius: var(--radius-sm); border: none; cursor: pointer; text-decoration: none; transition: all 0.15s; width: 100%; justify-content: center; }
+    .auth-btn:hover { background: #d8ff70; transform: translateY(-1px); }
+    .auth-note { font-size: 0.75rem; color: var(--text-dim); margin-top: 1rem; font-family: var(--font-mono); }
+
+    /* MAIN APP */
+    .app-screen { flex: 1; display: none; }
+    .app-screen.visible { display: grid; grid-template-columns: 400px 1fr; }
+
+    .panel-left { border-right: 1px solid var(--border); padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; max-height: calc(100vh - 62px); }
+    .panel-right { padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; max-height: calc(100vh - 62px); }
+
+    .user-bar { display: flex; align-items: center; justify-content: space-between; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.6rem 0.9rem; }
+    .user-info { display: flex; align-items: center; gap: 8px; }
+    .user-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+    .user-name { font-size: 0.82rem; color: var(--text-muted); }
+    .disconnect-btn { font-size: 0.75rem; color: var(--text-dim); background: none; border: none; cursor: pointer; font-family: var(--font-display); transition: color 0.15s; }
+    .disconnect-btn:hover { color: var(--danger); }
+
+    .section-label { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.6rem; }
+    .hero-text { padding: 0.5rem 0; }
+    .hero-text h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.03em; line-height: 1.2; }
+    .hero-text h1 em { color: var(--accent); font-style: normal; }
+    .hero-text p { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.6; }
+
+    textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font-display); font-size: 0.9rem; padding: 0.9rem 1rem; resize: none; line-height: 1.6; transition: border-color 0.2s; outline: none; }
+    textarea:focus { border-color: var(--border-hover); }
+    textarea::placeholder { color: var(--text-dim); }
+
+    .style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .style-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-family: var(--font-display); font-size: 0.78rem; padding: 0.6rem 0.5rem; cursor: pointer; transition: all 0.15s; text-align: center; }
+    .style-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .style-btn.active { background: var(--accent-dim); border-color: rgba(200,245,90,0.35); color: var(--accent); }
+
+    .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .control-group label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+    select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font-display); font-size: 0.85rem; padding: 0.55rem 0.75rem; outline: none; cursor: pointer; transition: border-color 0.2s; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+    select:focus { border-color: var(--border-hover); }
+
+    .generate-btn { width: 100%; background: var(--accent); border: none; border-radius: var(--radius-sm); color: #0d0d0d; font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; padding: 0.85rem 1.5rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .generate-btn:hover { background: #d8ff70; transform: translateY(-1px); }
+    .generate-btn:active { transform: translateY(0); }
+    .generate-btn:disabled { background: #2a2a2a; color: var(--text-dim); cursor: not-allowed; transform: none; }
+
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #0d0d0d; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .image-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; min-height: 420px; position: relative; overflow: hidden; flex: 1; }
+    .placeholder { text-align: center; padding: 2rem; }
+    .placeholder-icon { width: 60px; height: 60px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.5rem; }
+    .placeholder h3 { font-size: 0.95rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .placeholder p { font-size: 0.8rem; color: var(--text-dim); }
+    .generated-image { width: 100%; height: 100%; object-fit: contain; display: none; border-radius: var(--radius); }
+    .loading-overlay { position: absolute; inset: 0; background: var(--surface); display: none; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; border-radius: var(--radius); }
+    .loading-bar-wrap { width: 200px; height: 3px; background: var(--surface2); border-radius: 100px; overflow: hidden; }
+    .loading-bar { height: 100%; background: var(--accent); border-radius: 100px; animation: loading-pulse 2s ease-in-out infinite; }
+    @keyframes loading-pulse { 0%{width:15%} 50%{width:70%} 80%{width:85%} 100%{width:90%} }
+    .loading-text { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+
+    .error-msg { display: none; background: rgba(255,95,95,0.08); border: 1px solid rgba(255,95,95,0.2); border-radius: var(--radius-sm); color: var(--danger); font-size: 0.82rem; padding: 0.7rem 1rem; }
+    .image-meta { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; gap: 1rem; align-items: flex-start; justify-content: space-between; }
+    .meta-prompt { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; flex: 1; }
+    .meta-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .icon-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 0.78rem; padding: 0.45rem 0.75rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; white-space: nowrap; font-family: var(--font-display); }
+    .icon-btn:hover { border-color: var(--border-hover); color: var(--text); }
+
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 0.6rem; }
+    .gallery-thumb { aspect-ratio: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+    .gallery-thumb:hover { border-color: var(--border-hover); }
+    .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .empty-gallery { font-size: 0.78rem; color: var(--text-dim); font-family: var(--font-mono); }
+
+    @media (max-width: 768px) {
+      .app-screen.visible { grid-template-columns: 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
+      .panel-right { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Visionary<span>.</span></div>
+  <div class="badge">Powered by Pollinations AI</div>
+</header>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-icon">✦</div>
+    <h2>Generate images with AI</h2>
+    <p>Connect your free Pollinations account to start generating images. You use your own Pollen — no hidden charges.</p>
+    <a class="auth-btn" id="connectBtn" href="#">
+      Connect Pollinations account
+    </a>
+    <div class="auth-note">Free to use · You control your own balance · Revoke anytime</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app-screen" id="appScreen">
+  <div class="panel-left">
+    <div class="user-bar">
+      <div class="user-info">
+        <div class="user-dot"></div>
+        <span class="user-name" id="userName">Connected</span>
+      </div>
+      <button class="disconnect-btn" onclick="disconnect()">Disconnect</button>
+    </div>
+
+    <div class="hero-text">
+      <h1>Turn words into <em>images</em></h1>
+      <p>Free AI image generation powered by your Pollinations balance.</p>
+    </div>
+
+    <div>
+      <div class="section-label">Prompt</div>
+      <textarea id="promptInput" rows="5" placeholder="A fox reading a book under a glowing lantern in a misty forest at dusk..."></textarea>
+    </div>
+
+    <div>
+      <div class="section-label">Style preset</div>
+      <div class="style-grid" id="styleGrid">
+        <button class="style-btn active" data-style="">None</button>
+        <button class="style-btn" data-style="photorealistic, 4k, detailed">Photorealistic</button>
+        <button class="style-btn" data-style="digital art, vibrant colors, artstation">Digital Art</button>
+        <button class="style-btn" data-style="oil painting, impressionist, textured brushstrokes">Oil Painting</button>
+        <button class="style-btn" data-style="anime style, Studio Ghibli, soft colors">Anime</button>
+        <button class="style-btn" data-style="pencil sketch, hand drawn, black and white">Sketch</button>
+        <button class="style-btn" data-style="MS Paint style, simple flat drawing, beginner art">MS Paint</button>
+        <button class="style-btn" data-style="pixel art, 16-bit, retro game style">Pixel Art</button>
+        <button class="style-btn" data-style="watercolor, soft edges, pastel tones">Watercolor</button>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="control-group">
+        <label>Aspect ratio</label>
+        <select id="ratioSelect">
+          <option value="1024x1024">Square (1:1)</option>
+          <option value="1280x720">Landscape (16:9)</option>
+          <option value="720x1280">Portrait (9:16)</option>
+          <option value="1024x768">Classic (4:3)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Model (free tier)</label>
+        <select id="modelSelect">
+          <option value="flux">Flux Schnell</option>
+          <option value="zimage">Z-Image Turbo</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generateBtn" onclick="generateImage()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">Generate image</span>
+    </button>
+
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="panel-right">
+    <div style="display:flex; flex-direction:column; gap:1rem; flex:1;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="section-label" style="margin:0">Output</div>
+      </div>
+      <div class="image-container" id="imageContainer">
+        <div class="placeholder" id="placeholder">
+          <div class="placeholder-icon">✦</div>
+          <h3>Your image appears here</h3>
+          <p>Write a prompt and hit generate</p>
+        </div>
+        <img class="generated-image" id="outputImage" alt="Generated image" />
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+          <div class="loading-text" id="loadingText">Generating...</div>
+        </div>
+      </div>
+      <div class="image-meta" id="imageMeta">
+        <div class="meta-prompt" id="metaPrompt"></div>
+        <div class="meta-actions">
+          <button class="icon-btn" onclick="downloadImage()">↓ Save</button>
+          <button class="icon-btn" onclick="copyPrompt()">Copy prompt</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Recent generations</div>
+      <div id="galleryGrid" class="gallery-grid">
+        <div class="empty-gallery">No images yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const APP_KEY = 'pk_HqvjJTkkWLrbSEyC';
+  let userApiKey = null;
+  let selectedStyle = '';
+  let currentImageUrl = '';
+  let currentPrompt = '';
+  let gallery = [];
+
+  const loadingMessages = ['Painting pixels...','Summoning creativity...','Adding details...','Almost there...'];
+
+  function init() {
+    // Check if redirected back with key in URL hash
+    const hash = new URLSearchParams(location.hash.slice(1));
+    const keyFromHash = hash.get('api_key');
+    if (keyFromHash) {
+      userApiKey = keyFromHash;
+      localStorage.setItem('pollinations_key', keyFromHash);
+      history.replaceState(null, '', location.pathname);
+    } else {
+      userApiKey = localStorage.getItem('pollinations_key');
+    }
+
+    if (userApiKey) {
+      showApp();
+    } else {
+      showAuth();
+    }
+
+    // Set connect button href
+    const redirectUri = encodeURIComponent(location.href.split('#')[0]);
+    document.getElementById('connectBtn').href =
+      `https://enter.pollinations.ai/authorize?redirect_uri=${redirectUri}&client_id=${APP_KEY}&expiry=30`;
+  }
+
+  function showAuth() {
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('appScreen').classList.remove('visible');
+  }
+
+  function showApp() {
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appScreen').classList.add('visible');
+    document.getElementById('userName').textContent = 'Pollinations connected';
+  }
+
+  function disconnect() {
+    localStorage.removeItem('pollinations_key');
+    userApiKey = null;
+    showAuth();
+  }
+
+  document.getElementById('styleGrid').addEventListener('click', e => {
+    const btn = e.target.closest('.style-btn');
+    if (!btn) return;
+    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedStyle = btn.dataset.style;
+  });
+
+  document.getElementById('promptInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generateImage();
+  });
+
+  let loadingInterval;
+
+  function setLoading(on) {
+    const btn = document.getElementById('generateBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+    const overlay = document.getElementById('loadingOverlay');
+    let i = 0;
+    if (on) {
+      btn.disabled = true;
+      spinner.style.display = 'block';
+      btnText.textContent = 'Generating...';
+      overlay.style.display = 'flex';
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('outputImage').style.display = 'none';
+      document.getElementById('imageMeta').style.display = 'none';
+      document.getElementById('loadingText').textContent = loadingMessages[0];
+      loadingInterval = setInterval(() => {
+        i = (i + 1) % loadingMessages.length;
+        document.getElementById('loadingText').textContent = loadingMessages[i];
+      }, 1800);
+    } else {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = 'Generate image';
+      overlay.style.display = 'none';
+      clearInterval(loadingInterval);
+    }
+  }
+
+  async function generateImage() {
+    if (!userApiKey) { showAuth(); return; }
+    const promptRaw = document.getElementById('promptInput').value.trim();
+    if (!promptRaw) { showError('Please enter a prompt first.'); return; }
+
+    hideError();
+    setLoading(true);
+
+    const fullPrompt = selectedStyle ? `${promptRaw}, ${selectedStyle}` : promptRaw;
+    const [width, height] = document.getElementById('ratioSelect').value.split('x');
+    const model = document.getElementById('modelSelect').value;
+    const seed = Math.floor(Math.random() * 1000000);
+    const url = `https://gen.pollinations.ai/image/${encodeURIComponent(fullPrompt)}?width=${width}&height=${height}&model=${model}&seed=${seed}&key=${userApiKey}`;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        let errDetail = '';
+        try { const j = await response.json(); errDetail = j.error?.message || JSON.stringify(j); } catch(_) { errDetail = await response.text(); }
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('pollinations_key');
+          userApiKey = null;
+          showAuth();
+          return;
+        }
+        throw new Error(`HTTP ${response.status}: ${errDetail}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      currentImageUrl = blobUrl;
+      currentPrompt = promptRaw;
+
+      const outputImage = document.getElementById('outputImage');
+      outputImage.src = blobUrl;
+      outputImage.style.display = 'block';
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('metaPrompt').textContent = `"${promptRaw}"`;
+      document.getElementById('imageMeta').style.display = 'flex';
+      addToGallery(blobUrl, promptRaw);
+    } catch (err) {
+      document.getElementById('placeholder').style.display = 'flex';
+      showError('Generation failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function addToGallery(url, prompt) {
+    gallery.unshift({ url, prompt });
+    if (gallery.length > 12) gallery.pop();
+    renderGallery();
+  }
+
+  function renderGallery() {
+    const grid = document.getElementById('galleryGrid');
+    if (!gallery.length) { grid.innerHTML = '<div class="empty-gallery">No images yet</div>'; return; }
+    grid.innerHTML = gallery.map((item, i) =>
+      `<div class="gallery-thumb" onclick="loadFromGallery(${i})" title="${item.prompt}"><img src="${item.url}" alt="${item.prompt}" loading="lazy" /></div>`
+    ).join('');
+  }
+
+  function loadFromGallery(i) {
+    const item = gallery[i];
+    currentImageUrl = item.url;
+    currentPrompt = item.prompt;
+    document.getElementById('outputImage').src = item.url;
+    document.getElementById('outputImage').style.display = 'block';
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('metaPrompt').textContent = `"${item.prompt}"`;
+    document.getElementById('imageMeta').style.display = 'flex';
+    document.getElementById('promptInput').value = item.prompt;
+  }
+
+  function downloadImage() {
+    if (!currentImageUrl) return;
+    const a = document.createElement('a');
+    a.href = currentImageUrl;
+    a.download = `visionary-${Date.now()}.jpg`;
+    a.click();
+  }
+
+  function copyPrompt() {
+    if (!currentPrompt) return;
+    navigator.clipboard.writeText(currentPrompt).then(() => {
+      const btn = event.target;
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = orig, 1500);
+    });
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('errorMsg').style.display = 'none';
+  }
+
+  init();
+</script>
+</body>
+</html>
